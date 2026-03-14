@@ -21,9 +21,21 @@ Variables in `.env`:
 - `PGADMIN_DEFAULT_EMAIL` - pgAdmin login email
 - `PGADMIN_DEFAULT_PASSWORD` - pgAdmin password
 
+Build from local `Dockerfile`:
+
 ```bash
 docker compose up -d --build
 ```
+
+Run published image from registry:
+
+```bash
+docker compose -f docker-compose.release.yml up -d
+```
+
+It always uses `docker.io/pivotdude/postgres-timescale-postgis-pgvector:latest`.
+
+`docker-compose.release.yml` is intended for running the published image (no local build).
 
 Services from `docker-compose.yml`:
 - PostgreSQL: `127.0.0.1:5432`
@@ -52,6 +64,24 @@ Published tags:
 - `17`
 - `18`
 - `latest` (points to image `18`)
+
+## Pull Images
+
+GHCR:
+
+```bash
+docker pull ghcr.io/pivotdude/postgres-timescale-postgis-pgvector:17
+docker pull ghcr.io/pivotdude/postgres-timescale-postgis-pgvector:18
+docker pull ghcr.io/pivotdude/postgres-timescale-postgis-pgvector:latest
+```
+
+Docker Hub:
+
+```bash
+docker pull pivotdude/postgres-timescale-postgis-pgvector:17
+docker pull pivotdude/postgres-timescale-postgis-pgvector:18
+docker pull pivotdude/postgres-timescale-postgis-pgvector:latest
+```
 
 ## License
 
