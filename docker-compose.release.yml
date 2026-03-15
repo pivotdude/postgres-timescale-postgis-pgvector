@@ -25,7 +25,7 @@ services:
       - -c
       - shared_preload_libraries=timescaledb
       - -c
-      - max_worker_processes=16
+      - max_worker_processes=32
 
   pgadmin:
     image: docker.io/dpage/pgadmin4:latest
