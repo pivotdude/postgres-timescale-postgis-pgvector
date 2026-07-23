@@ -122,15 +122,19 @@ docker-publish.yml builds 6 images
 GHCR + Docker Hub tags updated (e.g. 18-timescale)
 ```
 
-## Base OS: bookworm only (for now)
+## Platforms
 
-Images are based on `postgres:<version>-bookworm` because PostGIS, pgvector, and TimescaleDB are available as pinned Debian packages.
+Published images support **linux/amd64** and **linux/arm64** (Intel/AMD and ARM — Apple Silicon, Graviton, Raspberry Pi 4+). Docker selects the correct architecture automatically.
 
-### Why not Alpine yet?
+Details: [docs/PLATFORMS.md](docs/PLATFORMS.md)
 
-Official `postgres:*-alpine` images ship PostgreSQL built into `/usr/local`, while Alpine `apk` extension packages install into `/usr/lib/postgresql17/`. They do not match out of the box, and Alpine packages also lag behind bookworm versions.
+## Base OS: bookworm only
 
-Alpine support would require building extensions from source in CI. That is doable, but it is a separate, heavier pipeline. Bookworm variants already save memory versus installing everything when you only need one bundle.
+Images are based on `postgres:<version>-bookworm` because PostGIS, pgvector, and TimescaleDB are available as pinned Debian packages on amd64 and arm64.
+
+**Alpine is not supported** — official `postgres:*-alpine` images are incompatible with Alpine `apk` extension packages, and Alpine repos ship older extension versions. Building extensions from source would be a separate, much heavier pipeline. See [docs/PLATFORMS.md](docs/PLATFORMS.md) for the full explanation.
+
+Use extension bundles (`18-timescale`, `18-pgvector`) if you want a smaller image without Alpine.
 
 ## Versioning
 
@@ -209,7 +213,7 @@ To show the link on Docker Hub for visitors:
 1. Open https://hub.docker.com/r/pivotdude/postgres-timescale-postgis-pgvector
 2. **Repository overview** → edit description
 3. Add a link, for example: `Source code: https://github.com/pivotdude/postgres-timescale-postgis-pgvector`
-4. Optional: paste this README into the full description
+4. Optional: paste this README into the full description, or link to [docs/PLATFORMS.md](docs/PLATFORMS.md) for architecture and Alpine notes
 
 GHCR links to the GitHub repo automatically when the package is public.
 
