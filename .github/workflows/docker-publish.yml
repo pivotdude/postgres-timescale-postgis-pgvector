@@ -161,4 +161,4 @@ jobs:
             org.opencontainers.image.licenses=MIT
             org.opencontainers.image.revision=${{ github.sha }}
           cache-from: type=gha,scope=${{ matrix.postgres_major }}-${{ matrix.variant }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.postgres_major }}-${{ matrix.variant }}
+          cache-to: type=gha,mode=min,scope=${{ matrix.postgres_major }}-${{ matrix.variant }},ignore-error=true
