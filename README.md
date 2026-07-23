@@ -198,6 +198,21 @@ docker pull pivotdude/postgres-timescale-postgis-pgvector:18-full
 docker pull pivotdude/postgres-timescale-postgis-pgvector:latest
 ```
 
+Source: https://github.com/pivotdude/postgres-timescale-postgis-pgvector
+
+### Docker Hub page
+
+Image labels include `org.opencontainers.image.source` pointing to this repository.
+
+To show the link on Docker Hub for visitors:
+
+1. Open https://hub.docker.com/r/pivotdude/postgres-timescale-postgis-pgvector
+2. **Repository overview** → edit description
+3. Add a link, for example: `Source code: https://github.com/pivotdude/postgres-timescale-postgis-pgvector`
+4. Optional: paste this README into the full description
+
+GHCR links to the GitHub repo automatically when the package is public.
+
 ## License
 
 MIT, see `LICENSE`.

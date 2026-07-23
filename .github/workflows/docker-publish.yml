@@ -152,6 +152,9 @@ jobs:
             TIMESCALEDB_TOOLS_APT_VERSION=${{ steps.versions.outputs.timescaledb_tools_apt_version }}
           tags: ${{ steps.tags.outputs.tags }}
           labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.url=https://github.com/${{ github.repository }}
+            org.opencontainers.image.licenses=MIT
             org.opencontainers.image.revision=${{ github.sha }}
           cache-from: type=gha,scope=${{ matrix.postgres_major }}-${{ matrix.variant }}
           cache-to: type=gha,mode=max,scope=${{ matrix.postgres_major }}-${{ matrix.variant }}
