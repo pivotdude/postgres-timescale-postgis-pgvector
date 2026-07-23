@@ -4,6 +4,13 @@ on:
   push:
     branches:
       - main
+    paths:
+      - Dockerfile
+      - versions/**
+      - variants/**
+      - .github/workflows/docker-publish.yml
+  schedule:
+    - cron: "0 3 * * 1"
   workflow_dispatch:
 
 jobs:
@@ -12,7 +19,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        postgres_version: ["17", "18"]
+        include:
+          - postgres_major: "17"
+            variant: timescale
+          - postgres_major: "17"
+            variant: pgvector
+          - postgres_major: "17"
+            variant: full
+          - postgres_major: "18"
+            variant: timescale
+          - postgres_major: "18"
+            variant: pgvector
+          - postgres_major: "18"
+            variant: full
     permissions:
       contents: read
       packages: write
@@ -20,6 +39,40 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Load pinned versions
+        id: versions
+        run: |
+          set -a
+          # shellcheck disable=SC1091
+          source "versions/${{ matrix.postgres_major }}.env"
+          # shellcheck disable=SC1091
+          source "variants/${{ matrix.variant }}.env"
+          # shellcheck disable=SC1091
+          source versions/manifest.env
+          # shellcheck disable=SC1091
+          source variants/manifest.env
+          set +a
+
+          {
+            echo "postgres_major=${POSTGRES_MAJOR}"
+            echo "postgres_version=${POSTGRES_VERSION}"
+            echo "postgres_image_tag=${POSTGRES_IMAGE_TAG}"
+            echo "variant=${VARIANT}"
+            echo "install_postgis=${INSTALL_POSTGIS}"
+            echo "install_timescale=${INSTALL_TIMESCALE}"
+            echo "install_pgvector=${INSTALL_PGVECTOR}"
+            echo "install_timescaledb_tools=${INSTALL_TIMESCALEDB_TOOLS}"
+            echo "postgis_version=${POSTGIS_VERSION}"
+            echo "pgvector_version=${PGVECTOR_VERSION}"
+            echo "timescaledb_version=${TIMESCALEDB_VERSION}"
+            echo "postgis_apt_version=${POSTGIS_APT_VERSION}"
+            echo "pgvector_apt_version=${PGVECTOR_APT_VERSION}"
+            echo "timescaledb_apt_version=${TIMESCALEDB_APT_VERSION}"
+            echo "timescaledb_tools_apt_version=${TIMESCALEDB_TOOLS_APT_VERSION}"
+            echo "latest_major=${LATEST_MAJOR}"
+            echo "default_variant=${DEFAULT_VARIANT}"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -37,13 +90,25 @@ jobs:
         run: |
           GHCR_IMAGE="${{ steps.prep.outputs.ghcr_image }}"
           DOCKERHUB_IMAGE="${{ steps.prep.outputs.dockerhub_image }}"
-          PG_VERSION="${{ matrix.postgres_version }}"
+          PG_MAJOR="${{ steps.versions.outputs.postgres_major }}"
+          PG_VERSION="${{ steps.versions.outputs.postgres_version }}"
+          VARIANT="${{ steps.versions.outputs.variant }}"
+          LATEST_MAJOR="${{ steps.versions.outputs.latest_major }}"
+          DEFAULT_VARIANT="${{ steps.versions.outputs.default_variant }}"
 
           {
             echo "tags<<EOF"
-            echo "${GHCR_IMAGE}:${PG_VERSION}"
-            echo "${DOCKERHUB_IMAGE}:${PG_VERSION}"
-            if [ "${PG_VERSION}" = "18" ]; then
+            echo "${GHCR_IMAGE}:${PG_MAJOR}-${VARIANT}"
+            echo "${DOCKERHUB_IMAGE}:${PG_MAJOR}-${VARIANT}"
+            echo "${GHCR_IMAGE}:${PG_VERSION}-${VARIANT}"
+            echo "${DOCKERHUB_IMAGE}:${PG_VERSION}-${VARIANT}"
+            if [ "${VARIANT}" = "full" ]; then
+              echo "${GHCR_IMAGE}:${PG_MAJOR}"
+              echo "${DOCKERHUB_IMAGE}:${PG_MAJOR}"
+              echo "${GHCR_IMAGE}:${PG_VERSION}"
+              echo "${DOCKERHUB_IMAGE}:${PG_VERSION}"
+            fi
+            if [ "${PG_MAJOR}" = "${LATEST_MAJOR}" ] && [ "${VARIANT}" = "${DEFAULT_VARIANT}" ]; then
               echo "${GHCR_IMAGE}:latest"
               echo "${DOCKERHUB_IMAGE}:latest"
             fi
@@ -70,7 +135,23 @@ jobs:
           file: ./Dockerfile
           push: true
           build-args: |
-            POSTGRES_VERSION=${{ matrix.postgres_version }}
+            VARIANT=${{ steps.versions.outputs.variant }}
+            INSTALL_POSTGIS=${{ steps.versions.outputs.install_postgis }}
+            INSTALL_TIMESCALE=${{ steps.versions.outputs.install_timescale }}
+            INSTALL_PGVECTOR=${{ steps.versions.outputs.install_pgvector }}
+            INSTALL_TIMESCALEDB_TOOLS=${{ steps.versions.outputs.install_timescaledb_tools }}
+            POSTGRES_MAJOR=${{ steps.versions.outputs.postgres_major }}
+            POSTGRES_VERSION=${{ steps.versions.outputs.postgres_version }}
+            POSTGRES_IMAGE_TAG=${{ steps.versions.outputs.postgres_image_tag }}
+            POSTGIS_VERSION=${{ steps.versions.outputs.postgis_version }}
+            PGVECTOR_VERSION=${{ steps.versions.outputs.pgvector_version }}
+            TIMESCALEDB_VERSION=${{ steps.versions.outputs.timescaledb_version }}
+            POSTGIS_APT_VERSION=${{ steps.versions.outputs.postgis_apt_version }}
+            PGVECTOR_APT_VERSION=${{ steps.versions.outputs.pgvector_apt_version }}
+            TIMESCALEDB_APT_VERSION=${{ steps.versions.outputs.timescaledb_apt_version }}
+            TIMESCALEDB_TOOLS_APT_VERSION=${{ steps.versions.outputs.timescaledb_tools_apt_version }}
           tags: ${{ steps.tags.outputs.tags }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.postgres_major }}-${{ matrix.variant }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.postgres_major }}-${{ matrix.variant }}

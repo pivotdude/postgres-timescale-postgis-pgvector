@@ -1,8 +1,6 @@
-version: "3.9"
-
 services:
   postgres_db:
-    image: pivotdude/postgres-timescale-postgis-pgvector:latest
+    image: pivotdude/postgres-timescale-postgis-pgvector:${POSTGRES_TAG:-18-full}
     container_name: postgres_db
     restart: always
     ports:
@@ -20,12 +18,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    command:
-      - postgres
-      - -c
-      - shared_preload_libraries=timescaledb
-      - -c
-      - max_worker_processes=32
 
   pgadmin:
     image: docker.io/dpage/pgadmin4:latest

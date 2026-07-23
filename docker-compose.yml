@@ -1,12 +1,24 @@
-version: "3.9"
-
 services:
   postgres_db:
     build:
       context: .
       dockerfile: Dockerfile
       args:
-        POSTGRES_VERSION: ${POSTGRES_VERSION:-18}
+        VARIANT: ${VARIANT}
+        INSTALL_POSTGIS: ${INSTALL_POSTGIS}
+        INSTALL_TIMESCALE: ${INSTALL_TIMESCALE}
+        INSTALL_PGVECTOR: ${INSTALL_PGVECTOR}
+        INSTALL_TIMESCALEDB_TOOLS: ${INSTALL_TIMESCALEDB_TOOLS}
+        POSTGRES_MAJOR: ${POSTGRES_MAJOR}
+        POSTGRES_VERSION: ${POSTGRES_VERSION}
+        POSTGRES_IMAGE_TAG: ${POSTGRES_IMAGE_TAG}
+        POSTGIS_VERSION: ${POSTGIS_VERSION}
+        PGVECTOR_VERSION: ${PGVECTOR_VERSION}
+        TIMESCALEDB_VERSION: ${TIMESCALEDB_VERSION}
+        POSTGIS_APT_VERSION: ${POSTGIS_APT_VERSION}
+        PGVECTOR_APT_VERSION: ${PGVECTOR_APT_VERSION}
+        TIMESCALEDB_APT_VERSION: ${TIMESCALEDB_APT_VERSION}
+        TIMESCALEDB_TOOLS_APT_VERSION: ${TIMESCALEDB_TOOLS_APT_VERSION}
     container_name: postgres_db
     restart: always
     ports:
@@ -24,12 +36,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    command:
-      - postgres
-      - -c
-      - shared_preload_libraries=timescaledb
-      - -c
-      - max_worker_processes=32
 
   pgadmin:
     image: docker.io/dpage/pgadmin4:latest

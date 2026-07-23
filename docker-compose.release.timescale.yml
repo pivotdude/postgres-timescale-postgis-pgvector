@@ -1,0 +1,8 @@
+services:
+  postgres_db:
+    command:
+      - postgres
+      - -c
+      - shared_preload_libraries=timescaledb
+      - -c
+      - max_worker_processes=32

@@ -1,9 +1,27 @@
-# postgres17-postgis
+# postgres-timescale-postgis-pgvector
 
-Docker image with PostgreSQL 17/18 and preinstalled extensions:
-- PostGIS 3
-- pgvector
+Docker images with pinned PostgreSQL 17/18 on **Debian bookworm** and optional extension bundles:
+- PostGIS 3 (included in every bundle)
 - TimescaleDB 2
+- pgvector
+
+## Extension bundles
+
+| Variant | PostGIS | TimescaleDB | pgvector | Example tag |
+|---------|---------|-------------|----------|-------------|
+| `timescale` | yes | yes | no | `18-timescale` |
+| `pgvector` | yes | no | yes | `18-pgvector` |
+| `full` | yes | yes | yes | `18-full` |
+
+Switching bundles is just changing the image tag:
+
+```yaml
+image: pivotdude/postgres-timescale-postgis-pgvector:18-timescale
+# later:
+image: pivotdude/postgres-timescale-postgis-pgvector:18-pgvector
+```
+
+`18` and `latest` still point to the `full` bundle for backward compatibility.
 
 ## Local Run
 
@@ -14,72 +32,107 @@ cp .env.example .env
 ```
 
 Variables in `.env`:
-- `POSTGRES_VERSION` - Postgres version to build (`17` or `18`)
-- `POSTGRES_USER` - database user
-- `POSTGRES_PASSWORD` - database user password
-- `POSTGRES_DB` - default database name
-- `PGADMIN_DEFAULT_EMAIL` - pgAdmin login email
-- `PGADMIN_DEFAULT_PASSWORD` - pgAdmin password
+- `POSTGRES_MAJOR` - Postgres major version to build (`17` or `18`)
+- `IMAGE_VARIANT` - extension bundle (`timescale`, `pgvector`, `full`)
+- `POSTGRES_TAG` - image tag for release compose (`18-timescale`, `18-pgvector`, `18-full`)
+- `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`
+- `PGADMIN_DEFAULT_EMAIL`, `PGADMIN_DEFAULT_PASSWORD`
 
-Build from local `Dockerfile`:
+Pinned PostgreSQL and package versions come from `versions/${POSTGRES_MAJOR}.env`.
+Bundle flags come from `variants/${IMAGE_VARIANT}.env`.
 
-```bash
-docker compose up -d --build
-```
-
-Run published image from registry:
+Build locally:
 
 ```bash
-docker compose -f docker-compose.release.yml up -d
+./scripts/compose.sh up -d --build
 ```
 
-It always uses `docker.io/pivotdude/postgres-timescale-postgis-pgvector:latest`.
+Run a published image:
 
-`docker-compose.release.yml` is intended for running the published image (no local build).
+```bash
+# pgvector bundle
+POSTGRES_TAG=18-pgvector docker compose -f docker-compose.release.yml up -d
 
-Services from `docker-compose.yml`:
+# timescale or full bundles need Timescale preload
+POSTGRES_TAG=18-timescale docker compose \
+  -f docker-compose.release.yml \
+  -f docker-compose.release.timescale.yml \
+  up -d
+```
+
+Services:
 - PostgreSQL: `127.0.0.1:5432`
 - pgAdmin: `http://localhost:10001`
 
+## Base OS: bookworm only (for now)
+
+Images are based on `postgres:<version>-bookworm` because PostGIS, pgvector, and TimescaleDB are available as pinned Debian packages.
+
+### Why not Alpine yet?
+
+Official `postgres:*-alpine` images ship PostgreSQL built into `/usr/local`, while Alpine `apk` extension packages install into `/usr/lib/postgresql17/`. They do not match out of the box, and Alpine packages also lag behind bookworm versions.
+
+Alpine support would require building extensions from source in CI. That is doable, but it is a separate, heavier pipeline. Bookworm variants already save memory versus installing everything when you only need one bundle.
+
+## Versioning
+
+Pinned versions live in:
+- `versions/17.env`
+- `versions/18.env`
+
+Each file pins PostgreSQL and all extension packages. Bundles only install the packages they need.
+
+Inspect bundle and versions inside an image:
+
+```bash
+docker inspect --format '{{index .Config.Labels "com.pivotdude.variant"}}' <image>
+docker run --rm <image> cat /opt/variants/timescale.env
+```
+
+### Image tags
+
+- `18-timescale`, `18-pgvector`, `18-full`
+- `18.4-timescale`, `18.4-pgvector`, `18.4-full`
+- `18`, `18.4` - aliases for `full`
+- `latest` - newest major + `full` bundle
+
+### Updating pinned versions
+
+```bash
+./scripts/check-versions.sh
+./scripts/check-versions.sh --write
+```
+
 ## CI/CD
 
-A GitHub Actions workflow is configured in this repository:
-- file: `.github/workflows/docker-publish.yml`
-- trigger: push to `main` (and manual `workflow_dispatch`)
-- actions: build Docker images and publish to:
-  - `ghcr.io/<github_owner>/<repo>`
-  - `docker.io/<DOCKERHUB_USERNAME>/<repo>`
+### Docker publish
+
+Workflow: `.github/workflows/docker-publish.yml`
+
+Build matrix: PostgreSQL `17/18` x bundles `timescale/pgvector/full`
+
+Triggers:
+- push to `main` when `Dockerfile`, `versions/**`, or `variants/**` change
+- weekly schedule: Monday 03:00 UTC
+- manual `workflow_dispatch`
+
+### Automated version bumps
+
+Workflow: `.github/workflows/update-versions.yml`
+
+Weekly check opens a PR when newer package versions are available.
 
 ### Required GitHub Secrets
 
-Add these in Settings -> Secrets and variables -> Actions:
-- `DOCKERHUB_USERNAME` - Docker Hub username
-- `DOCKERHUB_TOKEN` - Docker Hub access token
-
-For `ghcr.io`, the built-in `GITHUB_TOKEN` is used.
-
-## Image Tags
-
-Published tags:
-- `17`
-- `18`
-- `latest` (points to image `18`)
+- `DOCKERHUB_USERNAME`
+- `DOCKERHUB_TOKEN`
 
 ## Pull Images
 
-GHCR:
-
 ```bash
-docker pull ghcr.io/pivotdude/postgres-timescale-postgis-pgvector:17
-docker pull ghcr.io/pivotdude/postgres-timescale-postgis-pgvector:18
-docker pull ghcr.io/pivotdude/postgres-timescale-postgis-pgvector:latest
-```
-
-Docker Hub:
-
-```bash
-docker pull pivotdude/postgres-timescale-postgis-pgvector:17
-docker pull pivotdude/postgres-timescale-postgis-pgvector:18
+docker pull pivotdude/postgres-timescale-postgis-pgvector:18-timescale
+docker pull pivotdude/postgres-timescale-postgis-pgvector:18-pgvector
+docker pull pivotdude/postgres-timescale-postgis-pgvector:18-full
 docker pull pivotdude/postgres-timescale-postgis-pgvector:latest
 ```
 

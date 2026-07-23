@@ -1,0 +1,46 @@
+name: Update pinned versions
+
+on:
+  schedule:
+    - cron: "0 2 * * 1"
+  workflow_dispatch:
+
+jobs:
+  update-versions:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check for newer package versions
+        run: |
+          chmod +x scripts/check-versions.sh
+          scripts/check-versions.sh --write
+
+      - name: Detect version file changes
+        id: check
+        run: |
+          if git diff --quiet -- versions/; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create pull request
+        if: steps.check.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: bump pinned package versions"
+          title: "chore: bump pinned package versions"
+          body: |
+            Automated update of pinned PostgreSQL and extension versions.
+
+            This PR was opened by the weekly `update-versions` workflow.
+            Merging it will trigger a rebuild and publish of Docker images.
+          branch: chore/bump-pinned-versions
+          delete-branch: true
