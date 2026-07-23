@@ -64,6 +64,64 @@ Services:
 - PostgreSQL: `127.0.0.1:5432`
 - pgAdmin: `http://localhost:10001`
 
+## Keeping images up to date
+
+There is no `docker compose` service for version updates. Use GitHub Actions (recommended) or the local script.
+
+### Option 1: GitHub Actions (recommended)
+
+**Fully automatic version bumps**
+
+Runs every Monday at 02:00 UTC, or start it manually:
+
+1. Open GitHub → **Actions** → **Update pinned versions**
+2. Click **Run workflow** → **Run workflow**
+
+What happens:
+1. `scripts/check-versions.sh --write` updates `versions/*.env`
+2. If something changed, github-actions **commits and pushes directly to `main`**
+3. `docker-publish.yml` starts automatically and pushes new images to GHCR + Docker Hub
+
+No pull requests to merge.
+
+**Publish images only** (without version bump):
+
+1. **Actions** → **Docker CI/CD** → **Run workflow**
+
+### Option 2: Local script
+
+```bash
+# See what is outdated
+./scripts/check-versions.sh
+
+# Update versions/*.env locally
+./scripts/check-versions.sh --write
+```
+
+Then commit, push, and merge — CI will rebuild images:
+
+```bash
+git add versions/
+git commit -m "chore: bump pinned package versions"
+git push
+```
+
+Requires Docker (the script queries apt registries via `docker run`).
+
+### Full update flow
+
+```
+check-versions.sh --write
+        ↓
+versions/*.env updated
+        ↓
+auto-commit + push to main
+        ↓
+docker-publish.yml builds 6 images
+        ↓
+GHCR + Docker Hub tags updated (e.g. 18-timescale)
+```
+
 ## Base OS: bookworm only (for now)
 
 Images are based on `postgres:<version>-bookworm` because PostGIS, pgvector, and TimescaleDB are available as pinned Debian packages.
@@ -98,6 +156,10 @@ docker run --rm <image> cat /opt/variants/timescale.env
 
 ### Updating pinned versions
 
+See [Keeping images up to date](#keeping-images-up-to-date) for the full flow.
+
+Quick commands:
+
 ```bash
 ./scripts/check-versions.sh
 ./scripts/check-versions.sh --write
@@ -120,7 +182,7 @@ Triggers:
 
 Workflow: `.github/workflows/update-versions.yml`
 
-Weekly check opens a PR when newer package versions are available.
+Checks upstream packages weekly and pushes version bumps directly to `main` (no PR).
 
 ### Required GitHub Secrets
 
